@@ -1,4 +1,4 @@
-﻿# OpenClaw on NAS
+# OpenClaw on NAS
 
 <p align="center">
   <img src="https://img.shields.io/badge/NAS-Docker_capable-2ea44f" alt="Docker-capable NAS"/>
@@ -14,7 +14,7 @@
 </p>
 
 Docker deployment for OpenClaw on a NAS with local HTTPS.
-Access is **LAN-only** â€” do not port-forward OpenClaw from your router.
+Access is **LAN-only** — do not port-forward OpenClaw from your router.
 
 ```text
 LAN browser -> https://<nas-ip>:8443 -> Nginx TLS proxy -> OpenClaw gateway
@@ -23,7 +23,7 @@ LAN browser -> https://<nas-ip>:8443 -> Nginx TLS proxy -> OpenClaw gateway
 The NAS deployment uses the pre-built image published by this repository:
 
 ```text
-ghcr.io/luprintech/openclaw_nas_docker:<OPENCLAW_VERSION>
+ghcr.io/luprintech/openclaw-nas-docker:<OPENCLAW_VERSION>
 ```
 
 The NAS does **not** build the image locally. GitHub Actions builds the image from
@@ -406,25 +406,25 @@ No arguments needed.
 ### Windows
 
 1. Copy `certs/rootCA.cer` to the PC.
-2. Double-click it â†’ Install Certificate.
+2. Double-click it → Install Certificate.
 3. Choose **Local Machine**.
 4. Place it in **Trusted Root Certification Authorities**.
 
 ### macOS
 
-1. Open `rootCA.pem` â†’ Keychain Access adds it to System keychain.
-2. Open the certificate â†’ set SSL trust to **Always Trust**.
+1. Open `rootCA.pem` → Keychain Access adds it to System keychain.
+2. Open the certificate → set SSL trust to **Always Trust**.
 
 ### iPhone / iPad
 
-1. Open `rootCA.pem` on the device â†’ Install Profile.
-2. Go to **Settings â†’ General â†’ About â†’ Certificate Trust Settings**.
+1. Open `rootCA.pem` on the device → Install Profile.
+2. Go to **Settings → General → About → Certificate Trust Settings**.
 3. Enable full trust for the CA.
 
 ### Android
 
 ```text
-Settings â†’ Security â†’ Encryption & credentials â†’ Install a CA certificate
+Settings → Security → Encryption & credentials → Install a CA certificate
 ```
 
 Exact names vary by manufacturer.
@@ -538,6 +538,6 @@ Current versions of `install.sh` create these directories automatically.
 ## Security rules
 
 - Do not port-forward `18789` or `8443` from the router.
-- Keep `certs/` private â€” it is ignored by Git.
-- Never commit `.env` â€” it contains `OPENCLAW_GATEWAY_TOKEN`.
+- Keep `certs/` private — it is ignored by Git.
+- Never commit `.env` — it contains `OPENCLAW_GATEWAY_TOKEN`.
 - Install only OpenClaw skills/plugins you trust.

@@ -24,7 +24,7 @@ services:
       - openclaw-gateway
 
   openclaw-gateway:
-    image: ${OPENCLAW_IMAGE:-ghcr.io/luprintech/openclaw_nas_docker:${OPENCLAW_VERSION:-2026.5.3}}
+    image: ${OPENCLAW_IMAGE:-ghcr.io/luprintech/openclaw-nas-docker:${OPENCLAW_VERSION:-2026.5.3}}
     restart: unless-stopped
     init: true
     security_opt:
@@ -67,7 +67,7 @@ services:
       start_period: 60s
 
   openclaw-cli:
-    image: ${OPENCLAW_IMAGE:-ghcr.io/luprintech/openclaw_nas_docker:${OPENCLAW_VERSION:-2026.5.3}}
+    image: ${OPENCLAW_IMAGE:-ghcr.io/luprintech/openclaw-nas-docker:${OPENCLAW_VERSION:-2026.5.3}}
     init: true
     stdin_open: true
     tty: true

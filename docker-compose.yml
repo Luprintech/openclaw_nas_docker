@@ -67,14 +67,11 @@ services:
 
   openclaw-cli:
     image: ${OPENCLAW_IMAGE:-ghcr.io/luprintech/openclaw-nas-docker:latest}
+    profiles:
+      - cli
     init: true
-    stdin_open: true
-    tty: true
-    restart: unless-stopped
     networks:
       - openclaw-net
-    depends_on:
-      - openclaw-gateway
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -94,9 +91,6 @@ services:
     volumes:
       - ./config:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace
-
-    entrypoint: []
-    command: ["sh", "-c", "sleep infinity"]
 
 networks:
   openclaw-net:

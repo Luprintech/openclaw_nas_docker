@@ -355,34 +355,43 @@ configure_gateway() {
 
 print_next_steps() {
   local nas_ip="$1"
+  local https_port
+  https_port="$(env_get OPENCLAW_HTTPS_PORT | tr -d '[:space:]')"
 
-  section "Next steps"
-  cat <<EOF
-Install this CA on each client device:
-  certs/rootCA.pem
+  printf '\n%b' "$GREEN"
+  echo "╔══════════════════════════════════════════════════════════════╗"
+  echo "║                                                              ║"
+  echo "║             OpenClaw installed successfully!                 ║"
+  echo "║                                                              ║"
+  echo "╚══════════════════════════════════════════════════════════════╝"
+  printf '%b\n' "$NC"
 
-Then open HTTPS only:
-  https://$nas_ip:$(env_get OPENCLAW_HTTPS_PORT | tr -d '[:space:]')
+  printf '%bAccess:%b\n' "$BOLD" "$NC"
+  printf '  HTTPS:        %bhttps://%s:%s%b\n' "$BLUE" "$nas_ip" "$https_port" "$NC"
 
-Run onboarding:
-  ./openclaw onboard
+  printf '\n%bSetup:%b\n' "$BOLD" "$NC"
+  printf '  1. Install CA on every client device:\n'
+  printf '     %b%s/certs/rootCA.pem%b\n'              "$BLUE" "$SCRIPT_DIR" "$NC"
+  printf '  2. Run onboarding:\n'
+  printf '     %b./openclaw onboard%b\n'                "$BLUE" "$NC"
 
-Print dashboard/pairing URL:
-  ./openclaw dashboard
+  printf '\n%bCLI commands:%b\n' "$BOLD" "$NC"
+  printf '  Print dashboard/pairing URL:  %b./openclaw dashboard%b\n'            "$BLUE" "$NC"
+  printf '  List devices:                 %b./openclaw devices%b\n'              "$BLUE" "$NC"
+  printf '  Approve a pending device:     %b./openclaw approve <request_id>%b\n' "$BLUE" "$NC"
+  printf '  Check stack status:           %b./openclaw status%b\n'               "$BLUE" "$NC"
 
-List devices:
-  ./openclaw devices
+  printf '\n%bDocker:%b\n' "$BOLD" "$NC"
+  printf '  View logs:    %bdocker compose logs -f openclaw-gateway%b\n'                               "$BLUE" "$NC"
+  printf '  Stop:         %bcd %s && docker compose down%b\n'                                          "$BLUE" "$SCRIPT_DIR" "$NC"
+  printf '  Start:        %bcd %s && docker compose --profile https-local up -d%b\n'                   "$BLUE" "$SCRIPT_DIR" "$NC"
+  printf '  Restart:      %bcd %s && docker compose restart openclaw-gateway%b\n'                      "$BLUE" "$SCRIPT_DIR" "$NC"
 
-Approve a pending device:
-  ./openclaw approve <request_id>
+  printf '\n%bDocumentation:%b  https://docs.openclaw.ai\n' "$BOLD" "$NC"
+  printf '%bSupport:%b        https://discord.gg/clawd\n'   "$BOLD" "$NC"
 
-Check stack status:
-  ./openclaw status
-
-Security reminder:
-  Do NOT port-forward this service publicly from your router.
-  Keep it LAN-only or behind a private VPN/Zero Trust layer.
-EOF
+  printf '\n%b  Do NOT port-forward this service publicly. Keep it LAN-only.%b\n' "$YELLOW" "$NC"
+  printf '\n%bHappy automating!%b\n\n' "$YELLOW" "$NC"
 }
 
 main() {

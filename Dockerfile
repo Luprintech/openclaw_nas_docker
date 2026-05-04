@@ -50,7 +50,9 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 
 # Install uv (Python package manager) — needed for nano-pdf and other Python skills
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    ln -sf /root/.local/bin/uv /usr/local/bin/uv && \
+    test -f /root/.local/bin/uv   || { echo "uv binary not found after install"; exit 1; } && \
+    test -f /root/.local/bin/uvx  || { echo "uvx binary not found after install"; exit 1; } && \
+    ln -sf /root/.local/bin/uv  /usr/local/bin/uv && \
     ln -sf /root/.local/bin/uvx /usr/local/bin/uvx
 
 # Fix npm global install permissions

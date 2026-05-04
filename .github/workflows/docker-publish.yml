@@ -28,6 +28,7 @@ jobs:
         id: version
         run: |
           VERSION="$(tr -d '[:space:]' < .last-openclaw-version)"
+          [[ -n "$VERSION" ]] || { echo "ERROR: .last-openclaw-version is empty"; exit 1; }
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR

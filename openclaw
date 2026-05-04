@@ -104,7 +104,7 @@ cmd_approve() {
 }
 
 cmd_claude() {
-  compose exec -it openclaw-cli claude "$@"
+  compose --profile cli run --rm -it openclaw-cli claude "$@"
 }
 
 main() {
@@ -127,7 +127,7 @@ main() {
     restart) compose_restart "$@" ;;
     status|ps) compose ps "$@" ;;
     logs) compose logs -f "$@" ;;
-    shell) compose exec openclaw-cli sh ;;
+    shell) compose --profile cli run --rm -it openclaw-cli sh ;;
     help|-h|--help) usage ;;
     *) openclaw_cli "$command" "$@" ;;
   esac

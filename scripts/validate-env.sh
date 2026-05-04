@@ -131,7 +131,7 @@ valid_port() {
 }
 
 validate_required() {
-  local token nas_ip host_bind https_mode proxy_bind http_port https_port allowed_origins tz version
+  local token nas_ip host_bind https_mode proxy_bind http_port https_port allowed_origins tz
 
   if ! env_has "OPENCLAW_GATEWAY_TOKEN"; then
     fail "OPENCLAW_GATEWAY_TOKEN" "missing" "Generate one and add it to .env: openssl rand -hex 32"
@@ -192,13 +192,13 @@ validate_required() {
 
   allowed_origins="$(env_get OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS)"
   if [[ -z "$allowed_origins" ]]; then
-    fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS" "empty" "Run install.sh again or set a JSON array like [\"http://$(env_get NAS_IP):18789\"]."
+    fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS" "empty" "Run install.sh again or set a JSON array like [\"https://$(env_get NAS_IP):$(env_get OPENCLAW_HTTPS_PORT)\"]."
   elif [[ "$allowed_origins" == *"*"* ]]; then
-    fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS" "wildcard is not allowed" "Use explicit origins only, for example [\"http://$(env_get NAS_IP):18789\"]."
+    fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS" "wildcard is not allowed" "Use explicit origins only, for example [\"https://$(env_get NAS_IP):$(env_get OPENCLAW_HTTPS_PORT)\"]."
   elif [[ "$allowed_origins" == \[*\] ]]; then
     ok "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS=$allowed_origins"
   else
-    fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS" "must be a JSON array" "Use [\"http://$(env_get NAS_IP):18789\"] or [\"https://$(env_get NAS_IP)\"]."
+    fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS" "must be a JSON array" "Use [\"https://$(env_get NAS_IP):$(env_get OPENCLAW_HTTPS_PORT)\"]."
   fi
 
   tz="$(env_get TZ)"
@@ -208,14 +208,6 @@ validate_required() {
     ok "TZ=$tz"
   fi
 
-  version="$(env_get OPENCLAW_VERSION)"
-  if [[ -z "$version" ]]; then
-    ok "OPENCLAW_VERSION not set (using published image default)"
-  elif [[ "$version" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}(-[A-Za-z0-9._-]+)?$|^latest$|^main$ ]]; then
-    ok "OPENCLAW_VERSION=$version"
-  else
-    warn "OPENCLAW_VERSION" "unusual tag '$version'" "Use official image tags such as 2026.5.3-1, latest, or main."
-  fi
 }
 
 validate_providers() {

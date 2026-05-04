@@ -65,13 +65,13 @@ fetch_latest_version() {
   local token tags
 
   token="$(
-    curl -fsSL "https://${REGISTRY}/token?scope=repository:${IMAGE_REPOSITORY}:pull" |
+    curl -fsSL --max-time 10 "https://${REGISTRY}/token?scope=repository:${IMAGE_REPOSITORY}:pull" |
       jq -r '.token // empty'
   )"
-  [[ -n "$token" ]] || error "Could not obtain GHCR pull token."
+  [[ -n "$token" ]] || error "Could not obtain GHCR pull token (check network connectivity)."
 
   tags="$(
-    curl -fsSL \
+    curl -fsSL --max-time 15 \
       -H "Authorization: Bearer ${token}" \
       "https://${REGISTRY}/v2/${IMAGE_REPOSITORY}/tags/list?n=1000" |
       jq -r '.tags[]?'

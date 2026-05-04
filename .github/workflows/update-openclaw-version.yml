@@ -24,10 +24,10 @@ jobs:
         run: |
           chmod +x scripts/update-openclaw-version.sh
           scripts/update-openclaw-version.sh
-          if git diff --quiet; then
+          if git diff --quiet .last-openclaw-version; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            VERSION="$(cat .last-openclaw-version)"
+            VERSION="$(tr -d '[:space:]' < .last-openclaw-version)"
             echo "changed=true"  >> "$GITHUB_OUTPUT"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           fi

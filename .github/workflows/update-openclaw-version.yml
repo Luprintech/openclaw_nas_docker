@@ -1,0 +1,41 @@
+name: Update OpenClaw version
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:          # manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y --no-install-recommends jq
+
+      - name: Check and update version pins
+        id: check
+        run: |
+          chmod +x scripts/update-openclaw-version.sh
+          scripts/update-openclaw-version.sh
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            VERSION="$(cat .last-openclaw-version)"
+            echo "changed=true"  >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .last-openclaw-version .env.example Dockerfile docker-compose.yml
+          git commit -m "chore: update OpenClaw to ${{ steps.check.outputs.version }}"
+          git push

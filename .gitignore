@@ -1,0 +1,6 @@
+.env
+.claude/
+certs/
+config/
+workspace/
+*.tmp

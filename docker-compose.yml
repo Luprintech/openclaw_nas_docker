@@ -1,0 +1,111 @@
+# OpenClaw Gateway Stack for NAS.
+#
+# Target architecture:
+#   LAN browser -> https://NAS_IP:8443 -> Nginx TLS proxy -> OpenClaw Gateway
+#
+# Public exposure policy:
+#   Do NOT port-forward this service from the router.
+#   Do NOT expose 18789/443/8443 from the router.
+
+services:
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    profiles:
+      - https-local
+    ports:
+      - "${OPENCLAW_PROXY_BIND:-127.0.0.1}:${OPENCLAW_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - openclaw-net
+    depends_on:
+      - openclaw-gateway
+
+  openclaw-gateway:
+    build:
+      context: .
+      args:
+        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-2026.4.24}
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    networks:
+      - openclaw-net
+
+    # HTTPS-only mode: OPENCLAW_HOST_BIND=127.0.0.1 and nginx publishes HTTPS.
+    # Never expose this port through router port-forwarding.
+    ports:
+      - "${OPENCLAW_HOST_BIND:?Set OPENCLAW_HOST_BIND=127.0.0.1 in .env}:18789:18789"
+
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      TZ: ${TZ}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_VERSION: ${OPENCLAW_VERSION:-2026.4.24}
+      OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS: ${OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS}
+      NPM_CONFIG_PREFIX: /home/node/.npm-global
+      FORCE_COLOR: "1"
+      CI: "false"
+      OPENCLAW_SHOW_DEVICE_CODE: "true"
+
+    volumes:
+      - ./config:/home/node/.openclaw
+      - ./workspace:/home/node/.openclaw/workspace
+
+    entrypoint: []
+    command: ["node", "dist/index.js", "gateway", "--allow-unconfigured", "--bind", "lan", "--port", "18789"]
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18789/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  openclaw-cli:
+    build:
+      context: .
+      args:
+        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-2026.4.24}
+    init: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    networks:
+      - openclaw-net
+    depends_on:
+      - openclaw-gateway
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      TZ: ${TZ}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_VERSION: ${OPENCLAW_VERSION:-2026.4.24}
+      OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS: ${OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS}
+      NPM_CONFIG_PREFIX: /home/node/.npm-global
+      FORCE_COLOR: "1"
+      CI: "false"
+      OPENCLAW_SHOW_DEVICE_CODE: "true"
+
+    volumes:
+      - ./config:/home/node/.openclaw
+      - ./workspace:/home/node/.openclaw/workspace
+
+    entrypoint: []
+    command: ["sh", "-c", "sleep infinity"]
+
+networks:
+  openclaw-net:
+    driver: bridge

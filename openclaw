@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+#
+# OpenClaw Docker command wrapper.
+#
+# Use this instead of:
+#   docker compose exec openclaw-cli node dist/index.js ...
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  ./openclaw <command> [args...]
+
+OpenClaw:
+  onboard               Run OpenClaw onboarding
+  dashboard             Print dashboard URL / pairing flow
+  devices               List pending/known devices
+  approve <request_id>  Approve a device pairing request
+  doctor                Run OpenClaw doctor
+  claude                Open Claude Code interactive TUI
+  message <args>        Send a message (e.g. message send --target foo --message "hi")
+  agent <args>          Talk to the assistant (e.g. agent --message "hi")
+  update-version        Update local OpenClaw image version pins
+
+Stack:
+  start                 Start Docker Compose stack
+  stop                  Stop Docker Compose stack
+  restart               Restart Docker Compose stack
+  status                Show container status
+  logs [service]        Follow logs
+  shell                 Open shell inside CLI container
+
+Raw CLI:
+  Any unknown command is passed to OpenClaw inside Docker.
+
+Examples:
+  ./openclaw onboard
+  ./openclaw dashboard
+  ./openclaw devices
+  ./openclaw approve abc123
+  ./openclaw config get gateway.bind
+USAGE
+}
+
+error() {
+  printf 'ERROR: %s\n' "$1" >&2
+  exit 1
+}
+
+need_docker() {
+  command -v docker >/dev/null 2>&1 || error "docker is required"
+}
+
+compose() {
+  need_docker
+  docker compose "$@"
+}
+
+compose_up() {
+  compose --profile https-local up -d "$@"
+}
+
+compose_restart() {
+  compose --profile https-local restart "$@"
+}
+
+openclaw_cli() {
+  compose exec openclaw-gateway node dist/index.js "$@"
+}
+
+cmd_onboard() {
+  openclaw_cli onboard --mode local --no-install-daemon "$@"
+}
+
+cmd_dashboard() {
+  openclaw_cli dashboard --no-open "$@"
+}
+
+cmd_devices() {
+  openclaw_cli devices list "$@"
+}
+
+cmd_approve() {
+  local request_id="${1:-}"
+  [[ -n "$request_id" ]] || error "Missing request id. Use: ./openclaw approve <request_id>"
+  openclaw_cli devices approve "$request_id"
+}
+
+cmd_claude() {
+  compose exec -it openclaw-cli claude "$@"
+}
+
+main() {
+  local command="${1:-help}"
+  [[ $# -gt 0 ]] && shift || true
+
+  case "$command" in
+    onboard) cmd_onboard "$@" ;;
+    dashboard) cmd_dashboard "$@" ;;
+    devices) cmd_devices "$@" ;;
+    approve) cmd_approve "$@" ;;
+    doctor) openclaw_cli doctor "$@" ;;
+    claude) cmd_claude "$@" ;;
+    message) openclaw_cli message "$@" ;;
+    agent) openclaw_cli agent "$@" ;;
+    update-version) scripts/update-openclaw-version.sh "$@" ;;
+    start|up) compose_up "$@" ;;
+    stop|down) compose down "$@" ;;
+    restart) compose_restart "$@" ;;
+    status|ps) compose ps "$@" ;;
+    logs) compose logs -f "$@" ;;
+    shell) compose exec openclaw-cli sh ;;
+    help|-h|--help) usage ;;
+    *) openclaw_cli "$command" "$@" ;;
+  esac
+}
+
+main "$@"

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   check-version:
@@ -39,3 +40,15 @@ jobs:
           git add .last-openclaw-version .env.example Dockerfile docker-compose.yml
           git commit -m "chore: update OpenClaw to ${{ steps.check.outputs.version }}"
           git push
+
+      - name: Trigger Docker image publish
+        if: steps.check.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'docker-publish.yml',
+              ref: 'main'
+            });

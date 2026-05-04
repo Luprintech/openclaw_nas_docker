@@ -20,6 +20,15 @@ Access is **LAN-only** â€” do not port-forward OpenClaw from your router.
 LAN browser -> https://<nas-ip>:8443 -> Nginx TLS proxy -> OpenClaw gateway
 ```
 
+The NAS deployment uses the pre-built image published by this repository:
+
+```text
+ghcr.io/luprintech/openclaw_nas_docker:<OPENCLAW_VERSION>
+```
+
+The NAS does **not** build the image locally. GitHub Actions builds the image from
+`Dockerfile` and publishes it to GHCR; `docker-compose.yml` only pulls and runs it.
+
 Tested on Synology. Should work on any NAS that runs Docker
 (QNAP, Ugreen, TerraMaster, Asustor, etc.).
 
@@ -275,7 +284,7 @@ The installer will:
 - Configure local HTTPS mode.
 - Generate local TLS certificates under `certs/`.
 - Validate your environment.
-- Start the Docker Compose stack.
+- Pull and start the Docker Compose stack using the pre-built GHCR image.
 - Apply the allowed Control UI origins automatically.
 
 ### 9. Install the local root certificate on each client device

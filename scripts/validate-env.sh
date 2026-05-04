@@ -214,7 +214,7 @@ validate_required() {
   elif [[ "$version" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}(-[A-Za-z0-9._-]+)?$|^latest$|^main$ ]]; then
     ok "OPENCLAW_VERSION=$version"
   else
-    warn "OPENCLAW_VERSION" "unusual tag '$version'" "Use official image tags such as 2026.4.24, latest, or main."
+    warn "OPENCLAW_VERSION" "unusual tag '$version'" "Use official image tags such as 2026.5.3, latest, or main."
   fi
 }
 

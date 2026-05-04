@@ -25,6 +25,7 @@ OpenClaw:
   message <args>        Send a message (e.g. message send --target foo --message "hi")
   agent <args>          Talk to the assistant (e.g. agent --message "hi")
   update-version        Update local OpenClaw image version pins
+  update                Pull repo changes, pull image, restart stack
 
 Stack:
   start                 Start Docker Compose stack
@@ -68,6 +69,18 @@ compose_restart() {
   compose --profile https-local restart "$@"
 }
 
+cmd_update() {
+  if [[ -d ".git" ]]; then
+    command -v git >/dev/null 2>&1 || error "git is required to update a cloned repo"
+    git pull --ff-only
+  else
+    printf 'No .git directory found; skipping git pull.\n' >&2
+  fi
+
+  compose --profile https-local pull
+  compose_up
+}
+
 openclaw_cli() {
   compose exec openclaw-gateway node dist/index.js "$@"
 }
@@ -108,6 +121,7 @@ main() {
     message) openclaw_cli message "$@" ;;
     agent) openclaw_cli agent "$@" ;;
     update-version) scripts/update-openclaw-version.sh "$@" ;;
+    update) cmd_update "$@" ;;
     start|up) compose_up "$@" ;;
     stop|down) compose down "$@" ;;
     restart) compose_restart "$@" ;;

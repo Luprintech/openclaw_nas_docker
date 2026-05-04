@@ -23,7 +23,7 @@ LAN browser -> https://<nas-ip>:8443 -> Nginx TLS proxy -> OpenClaw gateway
 The NAS deployment uses the pre-built image published by this repository:
 
 ```text
-ghcr.io/luprintech/openclaw-nas-docker:<OPENCLAW_VERSION>
+ghcr.io/luprintech/openclaw-nas-docker:latest
 ```
 
 The NAS does **not** build the image locally. GitHub Actions builds the image from
@@ -442,6 +442,7 @@ Exact names vary by manufacturer.
 ./openclaw claude                # Open Claude Code interactive TUI
 ./openclaw message send --target <channel> --message "hi"  # Send a message
 ./openclaw agent --message "hi"  # Talk to the assistant
+./openclaw update                # Pull repo changes, pull image, restart
 ./openclaw status                # Container status
 ./openclaw logs                  # Follow all logs
 ./openclaw logs openclaw-gateway # Gateway logs only
@@ -460,17 +461,21 @@ Raw CLI pass-through:
 
 ## Updating OpenClaw
 
-Check for new versions:
+Recommended update path on the NAS:
+
+```bash
+./openclaw update
+```
+
+`./openclaw update` pulls repository changes, pulls the configured image, and
+restarts the stack. By default, `docker-compose.yml` uses the published `latest`
+image. `.last-openclaw-version` is only the CI build tracker, not a NAS runtime
+setting.
+
+Manual version pin update, usually only needed by maintainers:
 
 ```bash
 ./openclaw update-version
-```
-
-Then deploy:
-
-```bash
-docker compose pull
-./openclaw restart
 ```
 
 ---

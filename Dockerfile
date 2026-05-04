@@ -17,7 +17,7 @@
 #   2. Redirect npm's global prefix to /home/node/.npm-global (user-writable)
 #   3. Add bin/ directories to PATH so installed binaries are found.
 
-ARG OPENCLAW_VERSION=2026.5.3
+ARG OPENCLAW_VERSION=latest
 FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 USER root

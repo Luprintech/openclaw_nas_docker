@@ -440,12 +440,12 @@ validate_env_inline() {
 }
 
 # ─── Config file generation ───────────────────────────────────────────────────
-# Each function is idempotent: skips writing if the file already exists.
+# docker-compose.yml is always regenerated — it is fully managed by install.sh.
+# nginx.conf and the openclaw wrapper are written only on first install.
 # Files use quoted heredocs ('DELIM') to prevent bash variable expansion —
 # docker-compose and nginx interpret their own ${VAR} syntax at runtime.
 
-write_docker_compose_if_missing() {
-  [[ -f "docker-compose.yml" ]] && return 0
+write_docker_compose() {
   section "Generating docker-compose.yml"
   cat > docker-compose.yml << 'COMPOSE_EOF'
 # OpenClaw Gateway Stack for NAS.
@@ -770,7 +770,7 @@ OPENCLAW_EOF
 }
 
 generate_files_if_missing() {
-  write_docker_compose_if_missing
+  write_docker_compose
   write_nginx_conf_if_missing
   write_openclaw_wrapper_if_missing
 }
@@ -919,10 +919,17 @@ ENV_EOF
   env_set OPENCLAW_HTTPS_MODE "local"
   env_set OPENCLAW_HOST_BIND "127.0.0.1"
   env_set OPENCLAW_PROXY_BIND "$nas_ip"
-  env_set OPENCLAW_HTTPS_PORT "$DEFAULT_HTTPS_PORT"
+
+  local https_port
+  https_port="$(env_get OPENCLAW_HTTPS_PORT | tr -d '[:space:]')"
+  if [[ -z "$https_port" ]]; then
+    env_set OPENCLAW_HTTPS_PORT "$DEFAULT_HTTPS_PORT"
+    https_port="$DEFAULT_HTTPS_PORT"
+  fi
+
   success "Configured HTTPS-only local access"
   success "OpenClaw raw gateway bound to 127.0.0.1:18789"
-  success "Nginx HTTPS proxy bound to $nas_ip:$DEFAULT_HTTPS_PORT"
+  success "Nginx HTTPS proxy bound to $nas_ip:$https_port"
 }
 
 start_stack() {
@@ -964,6 +971,23 @@ configure_gateway() {
 
   docker compose exec -T openclaw-gateway \
     sh -c 'timeout 10 node dist/index.js config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback false' || true
+
+  printf 'Restarting gateway to apply configuration'
+  docker compose restart openclaw-gateway
+
+  local j=0
+  until docker compose exec -T openclaw-gateway curl -fsS http://127.0.0.1:18789/healthz >/dev/null 2>&1; do
+    j=$((j + 1))
+    if [[ $j -ge 30 ]]; then
+      printf '\n'
+      warn "Gateway did not come back healthy after restart. Check: docker compose logs openclaw-gateway"
+      return
+    fi
+    printf '.'
+    sleep 2
+  done
+  printf '\n'
+  success "Gateway restarted and configuration is active"
 }
 
 print_next_steps() {
@@ -1052,7 +1076,12 @@ main() {
   generate_https_certs_if_needed "$nas_ip"
   validate_env_inline
   start_stack
-  configure_gateway "$nas_ip" "$DEFAULT_HTTPS_PORT"
+
+  local https_port
+  https_port="$(env_get OPENCLAW_HTTPS_PORT | tr -d '[:space:]')"
+  [[ -z "$https_port" ]] && https_port="$DEFAULT_HTTPS_PORT"
+  configure_gateway "$nas_ip" "$https_port"
+
   print_next_steps "$nas_ip"
 }
 

@@ -45,7 +45,6 @@ services:
       TERM: xterm-256color
       TZ: ${TZ}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
-      OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS: ${OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS}
       NPM_CONFIG_PREFIX: /home/node/.npm-global
       FORCE_COLOR: "1"
       CI: "false"
@@ -82,7 +81,6 @@ services:
       TERM: xterm-256color
       TZ: ${TZ}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
-      OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS: ${OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS}
       NPM_CONFIG_PREFIX: /home/node/.npm-global
       FORCE_COLOR: "1"
       CI: "false"

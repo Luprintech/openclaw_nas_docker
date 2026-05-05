@@ -422,16 +422,6 @@ validate_env_inline() {
     _errors=$((_errors + 1))
   fi
 
-  local allowed_origins
-  allowed_origins="$(env_get OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS)"
-  if [[ -z "$allowed_origins" ]]; then
-    validation_fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS is empty"
-    _errors=$((_errors + 1))
-  elif [[ "$allowed_origins" == *"*"* ]]; then
-    validation_fail "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS must not use wildcards"
-    _errors=$((_errors + 1))
-  fi
-
   if [[ ! -f "certs/openclaw-local.pem" || ! -f "certs/openclaw-local-key.pem" ]]; then
     validation_fail "TLS certificates missing in certs/ — cert generation may have failed"
     _errors=$((_errors + 1))
@@ -505,7 +495,6 @@ services:
       TERM: xterm-256color
       TZ: ${TZ}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
-      OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS: ${OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS}
       NPM_CONFIG_PREFIX: /home/node/.npm-global
       FORCE_COLOR: "1"
       CI: "false"
@@ -542,7 +531,6 @@ services:
       TERM: xterm-256color
       TZ: ${TZ}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
-      OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS: ${OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS}
       NPM_CONFIG_PREFIX: /home/node/.npm-global
       FORCE_COLOR: "1"
       CI: "false"
@@ -889,7 +877,6 @@ OPENCLAW_HOST_BIND=
 OPENCLAW_PROXY_BIND=
 OPENCLAW_HTTPS_PORT=
 OPENCLAW_HTTPS_MODE=
-OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS=
 OPENCLAW_IMAGE=
 # AI provider keys — configure at least one after install
 ANTHROPIC_API_KEY=
@@ -933,11 +920,9 @@ ENV_EOF
   env_set OPENCLAW_HOST_BIND "127.0.0.1"
   env_set OPENCLAW_PROXY_BIND "$nas_ip"
   env_set OPENCLAW_HTTPS_PORT "$DEFAULT_HTTPS_PORT"
-  env_set OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS "[\"https://$nas_ip:$DEFAULT_HTTPS_PORT\"]"
   success "Configured HTTPS-only local access"
   success "OpenClaw raw gateway bound to 127.0.0.1:18789"
   success "Nginx HTTPS proxy bound to $nas_ip:$DEFAULT_HTTPS_PORT"
-  success "Allowed Control UI origin: https://$nas_ip:$DEFAULT_HTTPS_PORT"
 }
 
 start_stack() {
@@ -947,7 +932,11 @@ start_stack() {
 }
 
 configure_gateway() {
+  local nas_ip="$1"
+  local https_port="$2"
   section "Configuring gateway"
+
+  local allowed_origins="[\"https://${nas_ip}:${https_port}\"]"
 
   printf 'Waiting for gateway to be ready'
   local i=0
@@ -956,7 +945,7 @@ configure_gateway() {
     if [[ $i -ge 30 ]]; then
       printf '\n'
       warn "Gateway not ready after 60s. Run this manually when it's up:"
-      warn "  docker compose exec openclaw-gateway node dist/index.js config set gateway.controlUi.allowedOrigins \"\$OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS\""
+      warn "  docker compose exec openclaw-gateway node dist/index.js config set gateway.controlUi.allowedOrigins '${allowed_origins}'"
       return
     fi
     printf '.'
@@ -969,8 +958,8 @@ configure_gateway() {
     sh -c 'timeout 15 node dist/index.js plugins disable bonjour 2>/dev/null' || true
 
   docker compose exec -T openclaw-gateway \
-    sh -c 'timeout 10 node dist/index.js config set gateway.controlUi.allowedOrigins "$OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS"' && \
-    success "Applied allowed origins" || \
+    node dist/index.js config set gateway.controlUi.allowedOrigins "${allowed_origins}" && \
+    success "Applied allowed origins: ${allowed_origins}" || \
     warn "Could not apply allowed origins"
 
   docker compose exec -T openclaw-gateway \
@@ -1063,7 +1052,7 @@ main() {
   generate_https_certs_if_needed "$nas_ip"
   validate_env_inline
   start_stack
-  configure_gateway
+  configure_gateway "$nas_ip" "$DEFAULT_HTTPS_PORT"
   print_next_steps "$nas_ip"
 }
 

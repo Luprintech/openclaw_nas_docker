@@ -16,7 +16,7 @@ permissions:
 
 env:
   GHCR_IMAGE: ghcr.io/luprintech/openclaw-nas-docker
-  DOCKERHUB_IMAGE: lupytaka/openclaw-nas-docker
+  DOCKERHUB_IMAGE: luprintechdev/openclaw-nas-docker
 
 jobs:
   docker:

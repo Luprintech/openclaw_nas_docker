@@ -1,5 +1,6 @@
 .env
 .claude/
+.atl/
 certs/
 config/
 workspace/

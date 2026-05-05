@@ -40,6 +40,8 @@ This guide assumes you are installing OpenClaw on a NAS inside your LAN.
 The examples use `192.168.1.50` as the NAS IP. Replace it with your real NAS IP.
 
 > **Security rule:** keep OpenClaw LAN-only. Do **not** port-forward `18789` or `8443` from your router.
+>
+> **No clone needed.** The installer is self-contained — it generates all required files (`docker-compose.yml`, `nginx.conf`, `openclaw` wrapper) automatically.
 
 ### 0. Give your NAS a stable LAN IP
 
@@ -121,120 +123,62 @@ Example used below:
 192.168.1.50
 ```
 
-### 2. Copy the repo to the NAS
+### 2. SSH to your NAS and run the installer
 
-Choose a path that makes sense for your NAS:
+Choose a directory on your NAS:
 
-| NAS      | Typical path                              |
+| NAS      | Suggested path                            |
 | -------- | ----------------------------------------- |
 | Synology | `/volume1/docker/openclaw`                |
 | QNAP     | `/share/Container/openclaw`               |
 | Others   | `/opt/openclaw` or any writable directory |
 
-Then connect by SSH:
-
-```bash
-ssh <user>@<nas-ip>
-cd /path/to/openclaw
-```
-
-Example:
+Connect by SSH, create the directory, and run the installer:
 
 ```bash
 ssh admin@192.168.1.50
+mkdir -p /volume1/docker/openclaw
 cd /volume1/docker/openclaw
+curl -fsSL https://raw.githubusercontent.com/luprintech/openclaw-nas-docker/main/install.sh -o install.sh
+chmod +x install.sh
+./install.sh 192.168.1.50
 ```
 
-### 3. Create your `.env` file
-
-Copy the example file:
+Or if your NAS supports piping:
 
 ```bash
-cp .env.example .env
+bash <(curl -fsSL https://raw.githubusercontent.com/luprintech/openclaw-nas-docker/main/install.sh) 192.168.1.50
 ```
 
-Now edit it with your preferred editor:
+The installer handles everything automatically:
+
+- Generates `docker-compose.yml`, `nginx/nginx.conf`, and the `openclaw` CLI wrapper.
+- Creates `.env` with a secure, randomly generated `OPENCLAW_GATEWAY_TOKEN`.
+- Configures HTTPS-only LAN access.
+- Generates local TLS certificates under `certs/`.
+- Validates the environment.
+- Pulls and starts the Docker Compose stack using the pre-built GHCR image.
+- Applies the allowed Control UI origins.
+
+After install, add your AI provider key(s) to `.env`:
 
 ```bash
 nano .env
 ```
 
-If your NAS does not have `nano`, use `vi` or edit the file from the NAS file manager.
-
-### 4. Create `OPENCLAW_GATEWAY_TOKEN`
-
-`OPENCLAW_GATEWAY_TOKEN` is the shared secret used by the OpenClaw gateway and the web dashboard.
-Anyone who can reach your NAS and knows this token can access the gateway, so make it long and random.
-
-Generate one with **one** of these commands.
-
-Linux / macOS / most NAS systems:
-
-```bash
-openssl rand -hex 32
-```
-
-Python fallback:
-
-```bash
-python3 - <<'PY'
-import secrets
-print(secrets.token_hex(32))
-PY
-```
-
-Windows PowerShell, if you prepare the file from your PC:
-
-```powershell
-[guid]::NewGuid().ToString() + [guid]::NewGuid().ToString()
-```
-
-Put the generated value in `.env`:
+Fill in at least one provider:
 
 ```env
-OPENCLAW_GATEWAY_TOKEN=paste-your-generated-token-here
+ANTHROPIC_API_KEY=your-key-here
+# or OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, etc.
 ```
 
-Rules for the token:
-
-- Minimum 32 characters.
-- Use letters, numbers, and hyphens only.
-- Do **not** wrap it in quotes.
-- Do **not** commit `.env` to Git.
-
-> The installer can generate `OPENCLAW_GATEWAY_TOKEN` automatically if it is empty. Still, creating it yourself first is better because you understand what security boundary you are setting. CONCEPTS before automation.
-
-### 5. Complete the required `.env` values
-
-At minimum, configure the NAS IP, bind addresses, timezone, and optionally one AI provider key.
-
-#### Required mode for browser access: local HTTPS with bundled Nginx
-
-Use HTTPS for browser access. This is the supported path for this guide:
-
-```env
-NAS_IP=192.168.1.50
-OPENCLAW_HTTPS_MODE=local
-OPENCLAW_HOST_BIND=127.0.0.1
-OPENCLAW_PROXY_BIND=192.168.1.50
-OPENCLAW_HTTPS_PORT=8443
-OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS=["https://192.168.1.50:8443"]
-TZ=Europe/Madrid
-```
-
-What this means:
-
-- `NAS_IP`: the LAN IP of your NAS.
-- `OPENCLAW_HTTPS_MODE=local`: enables the bundled Nginx TLS proxy.
-- `OPENCLAW_HOST_BIND=127.0.0.1`: keeps the raw OpenClaw gateway private on the NAS.
-- `OPENCLAW_PROXY_BIND`: publishes Nginx on your NAS LAN IP.
-- `OPENCLAW_HTTPS_PORT=8443`: final browser URL will be `https://<nas-ip>:8443`.
-- `OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS`: tells OpenClaw which HTTPS browser origin is allowed to load the Control UI.
+One key is enough to start. If you leave them empty, onboarding can still configure providers later.
 
 #### About `http://<nas-ip>:18789`
 
 Do **not** use `http://192.168.1.50:18789` as the normal browser URL.
-That port is the raw OpenClaw gateway port. In the HTTPS setup above it is bound to `127.0.0.1`, so it stays private on the NAS and Nginx is the only LAN-facing entry point.
+That port is the raw OpenClaw gateway port — it is bound to `127.0.0.1` (private), and Nginx is the only LAN-facing entry point.
 
 Correct browser URL:
 
@@ -242,52 +186,7 @@ Correct browser URL:
 https://192.168.1.50:8443
 ```
 
-This matters because the dashboard uses browser security features that expect a secure origin. Treat HTTP as an internal implementation detail, not as the user-facing access method.
-
-### 6. Configure at least one AI provider, or plan to do it during onboarding
-
-OpenClaw needs an AI provider to be useful. Fill in one or more provider keys in `.env` if you already have them:
-
-```env
-GEMINI_API_KEY=
-OPENROUTER_API_KEY=
-ANTHROPIC_API_KEY=
-OPENAI_API_KEY=
-MISTRAL_API_KEY=
-GROQ_API_KEY=
-COHERE_API_KEY=
-```
-
-One key is enough to start. If you leave them empty, validation warns you, but onboarding can still configure providers later.
-
-### 7. Make scripts executable
-
-```bash
-chmod +x install.sh openclaw scripts/*.sh
-```
-
-### 8. Run the installer
-
-Run the installer in local HTTPS mode:
-
-```bash
-./install.sh 192.168.1.50
-```
-
-Do not use plain HTTP mode for normal browser access.
-
-The installer will:
-
-- Create `.env` from `.env.example` if missing.
-- Generate `OPENCLAW_GATEWAY_TOKEN` if it is still empty.
-- Store `NAS_IP` in `.env`.
-- Configure local HTTPS mode.
-- Generate local TLS certificates under `certs/`.
-- Validate your environment.
-- Pull and start the Docker Compose stack using the pre-built GHCR image.
-- Apply the allowed Control UI origins automatically.
-
-### 9. Install the local root certificate on each client device
+### 3. Install the local root certificate on each client device
 
 Copy the generated root certificate from the NAS to every device that will open OpenClaw:
 
@@ -305,7 +204,7 @@ Then trust that certificate on the device. See [Installing rootCA.pem](#installi
 
 If you skip this step, the browser will warn that the HTTPS certificate is not trusted. That is expected: you created a private local CA for your LAN, not a public internet certificate.
 
-### 10. Open the OpenClaw dashboard
+### 4. Open the OpenClaw dashboard
 
 Use the HTTPS URL:
 
@@ -323,7 +222,7 @@ OPENCLAW_GATEWAY_TOKEN=your-token-here
 
 Do not paste the key name. Paste only the token value.
 
-### 11. Run onboarding
+### 5. Run onboarding
 
 From the NAS project directory:
 
@@ -333,7 +232,7 @@ From the NAS project directory:
 
 This runs OpenClaw onboarding inside the Docker container without installing a host daemon.
 
-### 12. Pair your browser
+### 6. Pair your browser
 
 Pairing is the step that authorizes your browser as a known device.
 
@@ -371,7 +270,7 @@ Example:
 
 Your browser should now be paired and allowed to use the OpenClaw Control UI.
 
-### 13. Verify the stack is running
+### 7. Verify the stack is running
 
 ```bash
 ./openclaw status

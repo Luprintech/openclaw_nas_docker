@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 env:
@@ -62,3 +62,35 @@ jobs:
             ${{ env.GHCR_IMAGE }}:${{ steps.version.outputs.version }}
             ${{ env.DOCKERHUB_IMAGE }}:latest
             ${{ env.DOCKERHUB_IMAGE }}:${{ steps.version.outputs.version }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "Tag ${TAG} already exists — skipping release creation"
+            exit 0
+          fi
+
+          cat > release-notes.md << EOF
+          OpenClaw NAS Docker — ${TAG}
+
+          ## Docker images
+
+              ghcr.io/luprintech/openclaw-nas-docker:${VERSION}
+              luprintechdev/openclaw-nas-docker:${VERSION}
+
+          ## Install
+
+              bash <(curl -fsSL https://raw.githubusercontent.com/luprintech/openclaw-nas-docker/main/install.sh) <NAS_IP>
+
+          See [README](https://github.com/luprintech/openclaw-nas-docker#readme) for full setup instructions.
+          EOF
+
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --notes-file release-notes.md \
+            --latest

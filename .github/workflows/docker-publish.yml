@@ -46,6 +46,8 @@ jobs:
         with:
           context: .
           push: true
+          provenance: false
+          platforms: linux/amd64
           build-args: |
             OPENCLAW_VERSION=${{ steps.version.outputs.version }}
           tags: |

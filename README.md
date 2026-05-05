@@ -46,7 +46,7 @@ The examples use `192.168.1.50` as the NAS IP. Replace it with your real NAS IP.
 ### 0. Give your NAS a stable LAN IP
 
 OpenClaw stores your NAS IP in `.env` and uses it for dashboard URLs, allowed browser origins, and local HTTPS certificates.
-If your NAS IP changes later, the dashboard URL, certificate, and `OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS` can stop matching.
+If your NAS IP changes later, the dashboard URL, certificate, and the gateway's allowed origins can stop matching — rerun `install.sh` with the new IP to regenerate everything.
 
 Use one of these approaches:
 

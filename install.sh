@@ -932,6 +932,27 @@ ENV_EOF
   success "Nginx HTTPS proxy bound to $nas_ip:$https_port"
 }
 
+pre_configure_gateway() {
+  local nas_ip="$1"
+  local https_port="$2"
+  local config_file="config/openclaw.json"
+
+  # Only pre-write on first install (file does not exist yet).
+  # On re-installs the gateway has already initialized its config.
+  [[ -f "$config_file" ]] && return 0
+
+  section "Pre-configuring gateway"
+  mkdir -p config
+
+  printf '{\n  "gateway": {\n    "controlUi": {\n      "allowedOrigins": ["https://%s:%s"],\n      "dangerouslyAllowHostHeaderOriginFallback": false\n    }\n  }\n}\n' \
+    "$nas_ip" "$https_port" > "$config_file"
+
+  chown 1000:1000 "$config_file" 2>/dev/null || true
+  chmod 600 "$config_file" 2>/dev/null || true
+
+  success "Pre-configured gateway: https://${nas_ip}:${https_port}"
+}
+
 start_stack() {
   section "Starting OpenClaw Docker stack"
   docker compose --profile https-local up -d
@@ -961,6 +982,12 @@ configure_gateway() {
   printf '\n'
   success "Gateway is ready"
 
+  # Wait for OpenClaw to finish internal config initialization.
+  # healthz passes before config init completes on first boot.
+  printf 'Waiting for gateway config initialization'
+  sleep 10
+  printf '\n'
+
   docker compose exec -T openclaw-gateway \
     sh -c 'timeout 15 node dist/index.js plugins disable bonjour 2>/dev/null' || true
 
@@ -987,7 +1014,21 @@ configure_gateway() {
     sleep 2
   done
   printf '\n'
-  success "Gateway restarted and configuration is active"
+
+  # Verify the config survived the restart
+  local actual_origins
+  actual_origins="$(docker compose exec -T openclaw-gateway node dist/index.js config get gateway.controlUi.allowedOrigins 2>/dev/null || echo '')"
+  if echo "$actual_origins" | grep -q "https://${nas_ip}"; then
+    success "Gateway restarted and configuration is active"
+  else
+    warn "Config was reset after restart — applying again"
+    docker compose exec -T openclaw-gateway \
+      node dist/index.js config set gateway.controlUi.allowedOrigins "${allowed_origins}" 2>/dev/null || true
+    sleep 3
+    docker compose restart openclaw-gateway
+    sleep 10
+    success "Gateway restarted with forced configuration"
+  fi
 }
 
 print_next_steps() {
@@ -1075,11 +1116,13 @@ main() {
   prepare_env "$nas_ip"
   generate_https_certs_if_needed "$nas_ip"
   validate_env_inline
-  start_stack
 
   local https_port
   https_port="$(env_get OPENCLAW_HTTPS_PORT | tr -d '[:space:]')"
   [[ -z "$https_port" ]] && https_port="$DEFAULT_HTTPS_PORT"
+
+  pre_configure_gateway "$nas_ip" "$https_port"
+  start_stack
   configure_gateway "$nas_ip" "$https_port"
 
   print_next_steps "$nas_ip"

@@ -948,7 +948,7 @@ pre_configure_gateway() {
     "$nas_ip" "$https_port" > "$config_file"
 
   chown 1000:1000 "$config_file" 2>/dev/null || true
-  chmod 600 "$config_file" 2>/dev/null || true
+  chmod 644 "$config_file" 2>/dev/null || true
 
   success "Pre-configured gateway: https://${nas_ip}:${https_port}"
 }
